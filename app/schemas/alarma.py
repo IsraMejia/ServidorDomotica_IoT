@@ -12,3 +12,8 @@ class AlarmaOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+class AlarmaUpdate(BaseModel):
+    id: int
+    hora: time
+    activa: bool
