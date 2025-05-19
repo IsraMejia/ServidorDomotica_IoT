@@ -8,12 +8,16 @@ DISPOSITIVOS_ESP32 = {
         "url": "http://192.168.4.10/ventilador",  # ESP32 #1
         "metodo": "post"
     },
-    "Servir Agua": {
+    "Servir_Agua": {
         "url": "http://192.168.4.10/bomba",       # ESP32 #1
         "metodo": "post"
     },
     "Atomizador": {
         "url": "http://192.168.4.11/servo",       # ESP32 #2
+        "metodo": "post"
+    },
+    "Puerta": {
+        "url": "http://192.168.4.13/servo",       # ESP32 #3
         "metodo": "post"
     }
     # El sensor de temperatura se lee desde otro endpoint, no se activa.

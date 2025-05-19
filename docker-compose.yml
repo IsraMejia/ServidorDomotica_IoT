@@ -6,7 +6,7 @@ services:
     container_name: postgres_db
     environment:
       POSTGRES_USER: israel
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: 1234
       POSTGRES_DB: domotica
     ports:
       - "5432:5432"
