@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, requests
+import requests
+from fastapi import HTTPException
 from app.models.dispositivo import DispositivoIoT
 
 # Mapeo entre dispositivos y rutas en ESP32
@@ -13,11 +14,11 @@ DISPOSITIVOS_ESP32 = {
         "metodo": "post"
     },
     "Atomizador": {
-        "url": "http://192.168.4.11/servo",       # ESP32 #2
+        "url": "http://192.168.4.11/atomizador",       # ESP32 #2
         "metodo": "post"
     },
     "Puerta": {
-        "url": "http://192.168.4.13/servo",       # ESP32 #3
+        "url": "http://192.168.4.11/puerta",       # ESP32 #2
         "metodo": "post"
     }
     # El sensor de temperatura se lee desde otro endpoint, no se activa.
@@ -28,13 +29,18 @@ DISPOSITIVOS_ESP32 = {
 def enviar_orden_a_esp32(nombre: str, estado: bool):
     dispositivo = DISPOSITIVOS_ESP32.get(nombre)
     if not dispositivo:
+        print(f"[DEBUG] Dispositivo '{nombre}' no está mapeado a un ESP32")
         return  # No es un dispositivo controlado directamente, ignoramos
 
     url = dispositivo["url"]
-    try:
-        requests.post(url, json={"estado": estado}, timeout=2)
-    except requests.exceptions.RequestException as e:
-        print(f"Error comunicando con {nombre}: {e}")  
+    print(f"[DEBUG] Enviando POST a ESP32: {url} con estado={estado}")
+
+    # try:
+    #     requests.post(url, json={"estado": estado}, timeout=2)
+    # except requests.exceptions.RequestException as e:
+    #     print(f"[ERROR] Falló el POST a {url}: {e}")
+    #     raise HTTPException(status_code=503, detail=f"ESP32 no disponible para {nombre}")
+
 
 
 
