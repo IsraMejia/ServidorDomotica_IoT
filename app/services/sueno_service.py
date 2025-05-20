@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, time as time_obj
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from app.models.alarma import Alarma
 from app.models.sueno import Sueno
 from app.schemas.sueno import SuenoIn
@@ -7,7 +8,7 @@ from app.schemas.sueno import SuenoIn
 def calcular_sueno(db: Session, datos: SuenoIn):
     alarma = db.query(Alarma).filter(Alarma.id == datos.id).first()
     if not alarma:
-        raise Exception("Alarma no encontrada")
+        raise HTTPException(status_code=404, detail="Alarma no encontrada")
 
     hora_dormir = datetime.combine(datetime.today(), datos.hora_actual)
     hora_alarma = datetime.combine(datetime.today(), alarma.hora)

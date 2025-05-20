@@ -16,7 +16,10 @@ COPY ./app ./app
 # Expone el puerto donde corre Uvicorn
 EXPOSE 8000
 
-# Comando por defecto al iniciar el contenedor
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Comando por defecto al iniciar el contenedor 
+CMD ["bash", "-c", "python app/create_tables.py && python app/seed_devices.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
+
+
+
 
 

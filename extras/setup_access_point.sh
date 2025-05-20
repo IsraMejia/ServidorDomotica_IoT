@@ -51,7 +51,7 @@ sudo systemctl enable hostapd
 sudo systemctl enable dnsmasq
 
 echo "✅ Reiniciando servicios de red..."
-sudo systemctl restart dhcpcd
+sudo systemctl restart systemd-networkd
 sudo systemctl restart hostapd
 sudo systemctl restart dnsmasq
 
