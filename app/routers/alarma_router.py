@@ -23,4 +23,4 @@ def desactivar(alarma: AlarmaUpdate, db: Session = Depends(get_db)):
 
 @router.post("/calculoSueno", response_model=SuenoOut)
 def calcular_sueno_endpoint(data: SuenoIn, db: Session = Depends(get_db)):
-    return calcular_sueno(db, data)
+    return calcular_sueno(db, data) 
