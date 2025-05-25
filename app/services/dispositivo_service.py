@@ -21,6 +21,7 @@ DISPOSITIVOS_ESP32 = {
         "url": "http://192.168.4.11/puerta",       # ESP32 #2
         "metodo": "post"
     }
+    #TODO : Agregar al ESP32 2 que reciba la peticion de encender alarma, el servidor solito ira reconociendo la hora actual y verifica si hay una alarma que coincida, en caso de que esto sea cierto , dispara la peticion de encender alarma la ESP32 procesa la alarma para que suene un buzzer y se apague con un boton
     # El sensor de temperatura se lee desde otro endpoint, no se activa.
 }
 
@@ -30,17 +31,16 @@ def enviar_orden_a_esp32(nombre: str, estado: bool):
     dispositivo = DISPOSITIVOS_ESP32.get(nombre)
     if not dispositivo:
         print(f"[DEBUG] Dispositivo '{nombre}' no está mapeado a un ESP32")
-        return  # No es un dispositivo controlado directamente, ignoramos
+        return
 
     url = dispositivo["url"]
-    print(f"[DEBUG] Enviando POST a ESP32: {url} con estado={estado}")
-
-    # try:
-    #     requests.post(url, json={"estado": estado}, timeout=2)
-    # except requests.exceptions.RequestException as e:
-    #     print(f"[ERROR] Falló el POST a {url}: {e}")
-    #     raise HTTPException(status_code=503, detail=f"ESP32 no disponible para {nombre}")
-
+    print(f"[DEBUG] Enviando  a ESP32: {url} con estado={estado}")
+    try:
+        response = requests.post(url, json={"estado": estado}, timeout=2)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Falló el POST a {url}: {e}")
+        # Solo logea, no interrumpe el flujo
 
 
 
@@ -53,10 +53,11 @@ def actualizar_estado_dispositivo(db: Session, nombre: str, estado: bool):
     db.commit()
     db.refresh(dispositivo)
 
-    # Enviar comando al ESP32 correspondiente
+    # Esta llamada ya no puede romper el flujo
     enviar_orden_a_esp32(nombre, estado)
 
     return dispositivo
+
 
 def obtener_dispositivos(db: Session):
     return db.query(DispositivoIoT).all()

@@ -1,65 +1,117 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# setup_access_point.sh — RPi 5 + Bookworm listo-para-usar
+set -euo pipefail
+say(){ echo -e "\e[32m[SETUP-AP]\e[0m $*"; }
+die(){ echo -e "\e[31m[SETUP-AP-ERROR]\e[0m $*" >&2; exit 1; }
 
-set -e
+[[ $EUID -eq 0 ]] || die "Ejecuta con sudo"
+ip link show wlan0 &>/dev/null || die "No existe wlan0"
 
-echo "🔧 Instalando paquetes necesarios..."
-sudo apt update
-sudo apt install -y hostapd dnsmasq
+say "🔧 Instalando dependencias..."
+apt update -y
+DEBIAN_FRONTEND=noninteractive apt install -y hostapd dnsmasq
 
-echo "🛑 Deteniendo servicios temporalmente..."
-sudo systemctl stop hostapd
-sudo systemctl stop dnsmasq
+say "🛑 Deteniendo servicios..."
+systemctl stop hostapd || true
+systemctl stop dnsmasq || true
 
-echo "⚙️ Configurando IP fija para wlan0..."
-sudo tee -a /etc/dhcpcd.conf > /dev/null <<EOF
+# ── Evitar choques con NetworkManager ───────────────────────────
+say "🚦 Indicando a NetworkManager que ignore wlan0..."
+mkdir -p /etc/NetworkManager/conf.d
+cat > /etc/NetworkManager/conf.d/ignore-wlan0.conf <<'EOF'
+[keyfile]
+unmanaged-devices=interface-name:wlan0
+EOF
+systemctl reload NetworkManager
 
+# ── IP estática via dhcpcd ───────────────────────────────────────
+if ! grep -q "RedDomotica setup" /etc/dhcpcd.conf; then
+  say "⚙️  Ajustando /etc/dhcpcd.conf..."
+  cat >> /etc/dhcpcd.conf <<'EOF'
+# RedDomotica setup
 interface wlan0
     static ip_address=192.168.4.1/24
     nohook wpa_supplicant
 EOF
+fi
+systemctl restart dhcpcd
 
-echo "📡 Creando archivo de configuración de hostapd..."
-sudo tee /etc/hostapd/hostapd.conf > /dev/null <<EOF
+# ── hostapd ──────────────────────────────────────────────────────
+say "📡 Configurando hostapd..."
+cat > /etc/hostapd/hostapd.conf <<'EOF'
 interface=wlan0
 driver=nl80211
 ssid=RedDomotica
 hw_mode=g
 channel=7
-wmm_enabled=0
-macaddr_acl=0
+ieee80211n=1
+wmm_enabled=1
 auth_algs=1
-ignore_broadcast_ssid=0
 wpa=2
 wpa_passphrase=clave1234
-wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
 EOF
+sed -i 's|^#\?DAEMON_CONF=.*|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd
 
-echo "📁 Enlazando configuración de hostapd..."
-sudo sed -i 's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd
-
-echo "🧠 Configurando dnsmasq..."
-sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
-sudo tee /etc/dnsmasq.conf > /dev/null <<EOF
+# ── dnsmasq ─────────────────────────────────────────────────────
+say "🧠 Configurando dnsmasq..."
+mv -f /etc/dnsmasq.conf /etc/dnsmasq.conf.orig || true
+cat > /etc/dnsmasq.conf <<'EOF'
 interface=wlan0
 dhcp-range=192.168.4.10,192.168.4.40,255.255.255.0,24h
 EOF
 
-echo "🔓 Habilitando y reiniciando servicios..."
-sudo systemctl unmask hostapd
-sudo systemctl enable hostapd
-sudo systemctl enable dnsmasq
+systemctl unmask hostapd
+systemctl enable hostapd dnsmasq
 
-echo "✅ Reiniciando servicios de red..."
-sudo systemctl restart systemd-networkd
-sudo systemctl restart hostapd
-sudo systemctl restart dnsmasq
+# ── Script de información ───────────────────────────────────────
+say "🗒️  Creando /usr/local/bin/ap-info.sh..."
+cat > /usr/local/bin/ap-info.sh <<'EOF'
+#!/usr/bin/env bash
+ip=$(ip -4 addr show wlan0 | awk '/inet /{print $2}' | cut -d/ -f1)
+mac=$(cat /sys/class/net/wlan0/address)
+clients=$(iw dev wlan0 station dump 2>/dev/null | grep -c '^Station' || echo 0)
+leases=$(grep -cv '^#' /var/lib/misc/dnsmasq.leases 2>/dev/null || echo 0)
+echo -e "\e[34m[AP-STATUS]\e[0m 🚀 Access Point RedDomotica activo"
+echo "    📶 SSID   : RedDomotica"
+echo "    🔑 Pass   : clave1234"
+echo "    🌐 IP     : ${ip:-192.168.4.1}"
+echo "    🔗 MAC    : $mac"
+echo "    👥 Clientes: $clients"
+echo "    📜 Leases : $leases"
+echo "    🐳 Backend : http://${ip:-192.168.4.1}:8000/"
+echo "    🕒 Hora    : $(date '+%F %T')"
+EOF
+chmod +x /usr/local/bin/ap-info.sh
 
-echo "✅ Access Point configurado correctamente."
-echo "📶 Nombre de red: RedDomotica"
-echo "🔑 Contraseña:    clave1234"
-echo "📡 IP del AP:     192.168.4.1"
-echo "🔄 Reiniciando Raspberry Pi en 5 segundos..."
+# ── Servicio systemd ─────────────────────────────────────────────
+say "🔨 Configurando ap-status.service..."
+cat > /etc/systemd/system/ap-status.service <<'EOF'
+[Unit]
+Description=Mostrar estado de RedDomotica al arrancar
+After=hostapd.service dnsmasq.service
+Wants=hostapd.service dnsmasq.service
 
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ap-info.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable ap-status.service
+
+# ── Arranque inmediato ──────────────────────────────────────────
+say "🔄 Levantando servicios..."
+systemctl restart hostapd
+systemctl restart dnsmasq
+
+say "✅ Access Point configurado correctamente."
+say "    📶 SSID : RedDomotica"
+say "    🔑 Pass : clave1234"
+say "    🌐 IP   : 192.168.4.1"
+say "🔃 Reinicio en 5 s para aplicar todo (Ctrl-C para abortar)…"
 sleep 5
-sudo reboot
+reboot

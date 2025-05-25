@@ -1,16 +1,27 @@
 from fastapi import FastAPI
-from app.db.session import engine, Base        # <- instancia correcta
-from app.models import alarma, dispositivo     # importa TODOS los modelos
+from contextlib import asynccontextmanager
+from app.db.session import engine, Base         
+from app.models import alarma, dispositivo      
+from app.seed_devices import run as run_seeder
+from app.routers import alarma_router, iot_router
 
 # -------------  TABLAS -------------
-Base.metadata.create_all(bind=engine)          # ahora sí usa el Engine real
+Base.metadata.create_all(bind=engine)
 
-# -------------  FASTAPI -------------
-app = FastAPI()
+# -------------  LIFESPAN -------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("🔧 Ejecutando run_seeder()...")
+    run_seeder()
+    yield
+    print("🛑 Apagando backend...")
 
-from app.routers import alarma_router, iot_router
+# -------------  FASTAPI APP -------------
+app = FastAPI(lifespan=lifespan)
+
+# -------------  RUTAS -------------
 app.include_router(alarma_router.router, prefix="/alarma", tags=["Alarma"])
-app.include_router(iot_router.router,   prefix="/iot",    tags=["IoT"])
+app.include_router(iot_router.router, prefix="/iot", tags=["IoT"])
 
 @app.get("/")
 def root():
