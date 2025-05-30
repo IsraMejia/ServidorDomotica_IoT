@@ -53,7 +53,6 @@ app/
 
 ```bash
 git clone https://github.com/tu_usuario/smarthome-backend.git
-cd smarthome-backend
 ```
 
 2. Copia el archivo `.env.example` a `.env` y ajusta variables como la IP del ESP32 y la base de datos.
