@@ -3,26 +3,36 @@ import requests
 from fastapi import HTTPException
 from app.models.dispositivo import DispositivoIoT
 
+#BaseOptions(baseUrl: 'http://192.168.1.131:8000')
+# '192.168.1.10' 
 # Mapeo entre dispositivos y rutas en ESP32
 DISPOSITIVOS_ESP32 = {
     "Ventilador": {
-        "url": "http://192.168.4.10/ventilador",  # ESP32 #1
+        # "url": "http://192.168.1.10/ventilador",  # ESP32 #1
+        "url": "http://192.168.0.60/ventilador",  # ESP32 #1
         "metodo": "post"
     },
     "Servir_Agua": {
-        "url": "http://192.168.4.10/bomba",       # ESP32 #1
+        # "url": "http://192.168.1.10/bomba",       # ESP32 #1
+        "url": "http://192.168.0.60/bomba",
         "metodo": "post"
-    },
+    }, 
+
     "Atomizador": {
-        "url": "http://192.168.4.11/atomizador",       # ESP32 #2
+        #"url": "http://192.168.1.10/atomizador",       # ESP32 #1 
+        "url": "http://192.168.0.60/atomizador",       # ESP32 #1 
         "metodo": "post"
     },
     "Puerta": {
-        "url": "http://192.168.4.11/puerta",       # ESP32 #2
+        # "url": "http://192.168.1.10/puerta",       # ESP32 #1
+        "url": "http://192.168.0.60/puerta",       # ESP32 #1
         "metodo": "post"
-    }
-    #TODO : Agregar al ESP32 2 que reciba la peticion de encender alarma, el servidor solito ira reconociendo la hora actual y verifica si hay una alarma que coincida, en caso de que esto sea cierto , dispara la peticion de encender alarma la ESP32 procesa la alarma para que suene un buzzer y se apague con un boton
-    # El sensor de temperatura se lee desde otro endpoint, no se activa.
+    },
+    "Alarma": {
+        # "url": "http://192.168.1.10/puerta",       # ESP32 #1
+        "url": "http://192.168.0.60/alarma",       # ESP32 #1
+        "metodo": "post"
+    } 
 }
 
 
